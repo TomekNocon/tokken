@@ -79,6 +79,7 @@ class RunWareService:
         self, 
         image_ids: List[str], 
         character_name: str,
+        prompt: str = None,
         width: int = None,
         height: int = None,
         duration: float = None
@@ -89,6 +90,12 @@ class RunWareService:
             width = width or config.DEFAULT_VIDEO_WIDTH
             height = height or config.DEFAULT_VIDEO_HEIGHT
             duration = duration or config.DEFAULT_VIDEO_DURATION
+            
+            # Use custom prompt or default
+            if prompt:
+                video_prompt = prompt
+            else:
+                video_prompt = config.DEFAULT_VIDEO_PROMPT.format(character_name=character_name)
             
             logger.info(f"Starting video generation for character: {character_name}")
             logger.info(f"Video dimensions: {width}x{height}, Duration: {duration}s")
@@ -118,7 +125,7 @@ class RunWareService:
                     }
                 },
                 "frameImages": frame_images,
-                "positivePrompt": f"A detailed anime-style character named {character_name} in action, dynamic movement, professional character animation, vibrant colors, clean lines, fantasy RPG character",
+                "positivePrompt": video_prompt,
                 "taskUUID": task_uuid
             }]
             

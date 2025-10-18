@@ -118,19 +118,21 @@ async def serve_test_page():
 @app.post("/characters/", response_model=CreateCharacterResponse, tags=["Characters"])
 async def create_character(
     images: List[UploadFile] = File(..., description="Character images to upload"),
-    name: str = Form(..., description="Character name")
+    name: str = Form(..., description="Character name"),
+    prompt: str = Form(None, description="Custom prompt for video generation (optional)")
 ) -> CreateCharacterResponse:
     """
     Create a new AI character from uploaded images.
     
     - **images**: List of image files (PNG, JPG, etc.)
     - **name**: Character name (1-100 characters)
+    - **prompt**: Custom prompt for video generation (optional, max 500 characters)
     
     Returns the created character ID and status.
     """
     try:
         logger.info(f"Creating character '{name}' with {len(images)} images")
-        result = await character_service.create_character(images, name)
+        result = await character_service.create_character(images, name, prompt)
         logger.info(f"Character created successfully: {result.character_id}")
         return result
         

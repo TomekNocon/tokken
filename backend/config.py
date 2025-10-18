@@ -18,7 +18,7 @@ class Config:
     RUNWARE_API_URL: str = "https://api.runware.ai/v1"
     
     # Server settings
-    HOST: str = "0.0.0.0"
+    HOST: str = "127.0.0.1"
     PORT: int = 8000
     RELOAD: bool = True
     TIMEOUT_KEEP_ALIVE: int = 7200
@@ -41,6 +41,9 @@ class Config:
     
     # Character settings
     DEFAULT_CHARACTER_HEALTH: int = 1000
+    
+    # Default video generation prompt
+    DEFAULT_VIDEO_PROMPT: str = "create a virtual tour video of this living room as if real estate agent walked around and recorded it"
     
     @classmethod
     def validate(cls) -> None:

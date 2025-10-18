@@ -29,7 +29,7 @@ class CharacterService:
     def __init__(self):
         self.runware_service = RunWareService()
     
-    async def create_character(self, images: List[UploadFile], name: str) -> CreateCharacterResponse:
+    async def create_character(self, images: List[UploadFile], name: str, prompt: str = None) -> CreateCharacterResponse:
         """Create a new character from uploaded images."""
         try:
             logger.info(f"Creating character '{name}' with {len(images)} images")
@@ -44,7 +44,7 @@ class CharacterService:
             image_paths = await self._save_uploaded_images(char_id, images)
             
             # Generate character video
-            generated_video_path = await self._generate_character_video(char_id, image_paths, name)
+            generated_video_path = await self._generate_character_video(char_id, image_paths, name, prompt)
             
             # Create character data
             character_data = self._create_character_data(char_id, name, image_paths, generated_video_path)
@@ -135,7 +135,7 @@ class CharacterService:
         
         return image_paths
     
-    async def _generate_character_video(self, char_id: str, image_paths: List[str], name: str) -> str:
+    async def _generate_character_video(self, char_id: str, image_paths: List[str], name: str, prompt: str = None) -> str:
         """Generate character video using AI."""
         try:
             logger.info(f"Generating video for character: {name}")
@@ -151,7 +151,7 @@ class CharacterService:
                 uploaded_image_ids.append(image_id)
             
             # Generate video
-            video_url = await self.runware_service.generate_video(uploaded_image_ids, name)
+            video_url = await self.runware_service.generate_video(uploaded_image_ids, name, prompt)
             
             # Download generated video
             video_path = get_file_path(char_id, "video")
