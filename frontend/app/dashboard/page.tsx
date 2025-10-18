@@ -69,7 +69,7 @@ export default function DashboardPage() {
   const [generationStep, setGenerationStep] = useState<GenerationStep>("analyzing")
   const [progress, setProgress] = useState(0)
   const [videoGenerated, setVideoGenerated] = useState(false)
-  const [generatedCharacter, setGeneratedCharacter] = useState<Character | null>(null)
+  const [generatedCharacters, setGeneratedCharacters] = useState<Character[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showAddYourself, setShowAddYourself] = useState(false)
   const [userPhoto, setUserPhoto] = useState<File | null>(null)
@@ -250,7 +250,7 @@ export default function DashboardPage() {
       clearInterval(progressInterval)
       setProgress(100)
       setGenerationStep("complete")
-      setGeneratedCharacter(character)
+      setGeneratedCharacters(prev => [...prev, character])
       setIsGenerating(false)
       setVideoGenerated(true)
 
@@ -679,25 +679,50 @@ export default function DashboardPage() {
             </div>
           ) : (
             <Card className="bg-card border-border p-6">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {error && (
                   <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
                     Error: {error}
                   </div>
                 )}
-                {generatedCharacter ? (
-                  <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
-                    <video
-                      controls
-                      className="w-full h-full object-cover"
-                      src={`${API_BASE_URL}/characters/${generatedCharacter.id}/video`}
-                      poster=""
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-white text-sm">
-                      {generatedCharacter.name}
-                    </div>
+                
+                {/* Generated Videos Grid */}
+                {generatedCharacters.length > 0 ? (
+                  <div className={`grid gap-4 ${generatedCharacters.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {generatedCharacters.map((character, index) => (
+                      <div key={character.id} className="space-y-3">
+                        <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
+                          <video
+                            controls
+                            className="w-full h-full object-cover"
+                            src={`${API_BASE_URL}/characters/${character.id}/video`}
+                            poster=""
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                          <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-white text-sm">
+                            {character.name} {generatedCharacters.length > 1 ? `#${index + 1}` : ''}
+                          </div>
+                        </div>
+                        
+                        {/* Individual video actions */}
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={`${API_BASE_URL}/characters/${character.id}/video`}
+                            download={`${character.name}_video_${index + 1}.mp4`}
+                          >
+                            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                              <Download className="w-3 h-3 mr-2" />
+                              Download
+                            </Button>
+                          </a>
+                          <Button size="sm" variant="outline" className="bg-card border-border hover:bg-muted">
+                            <Share2 className="w-3 h-3 mr-2" />
+                            Share
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="aspect-video bg-black rounded-lg flex items-center justify-center relative overflow-hidden">
@@ -706,34 +731,34 @@ export default function DashboardPage() {
                     <p className="absolute bottom-4 left-4 text-sm text-white/60">Your video is ready!</p>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-3">
-                  {generatedCharacter && (
-                    <a
-                      href={`${API_BASE_URL}/characters/${generatedCharacter.id}/video`}
-                      download={`${generatedCharacter.name}_video.mp4`}
-                    >
-                      <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    </a>
-                  )}
-                  <Button variant="outline" className="bg-card border-border hover:bg-muted">
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share to {selectedPlatform || "Platform"}
-                  </Button>
+
+                {/* Main Action Buttons */}
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
                   <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setVideoGenerated(false)
-                      setGeneratedCharacter(null)
-                      setProgress(0)
-                      setError(null)
-                    }}
+                    size="lg"
+                    disabled={photos.length === 0 || !propertyName.trim() || isGenerating}
+                    onClick={handleGenerate}
+                    className="bg-gradient-to-r from-accent to-orange-600 hover:from-accent/90 hover:to-orange-700 text-accent-foreground font-semibold"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Try Another Style
+                    {generatedCharacters.length > 0 ? "Generate Another Video" : "Generate Video"}
                   </Button>
+                  
+                  {generatedCharacters.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setVideoGenerated(false)
+                        setGeneratedCharacters([])
+                        setProgress(0)
+                        setError(null)
+                        setCombinedImageUrl(null)
+                        setUserPhoto(null)
+                      }}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Start Over
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>
