@@ -36,6 +36,20 @@ type Vibe = "luxury" | "fun" | "business" | "family"
 type ColorMood = "warm" | "cool" | "natural" | "vibrant"
 type GenerationStep = "analyzing" | "styling" | "transitions" | "finalizing" | "complete"
 
+interface Character {
+  id: string
+  name: string
+  image_paths: string[]
+  generated_path: string
+  health: number
+  wins: number
+  losses: number
+  created_at: string
+  status: string
+}
+
+const API_BASE_URL = "http://127.0.0.1:8000"
+
 export default function DashboardPage() {
   const [photos, setPhotos] = useState<File[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -55,6 +69,8 @@ export default function DashboardPage() {
   const [generationStep, setGenerationStep] = useState<GenerationStep>("analyzing")
   const [progress, setProgress] = useState(0)
   const [videoGenerated, setVideoGenerated] = useState(false)
+  const [generatedCharacter, setGeneratedCharacter] = useState<Character | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -93,26 +109,94 @@ export default function DashboardPage() {
     setDraggedIndex(null)
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (photos.length === 0 || !propertyName) {
+      setError("Please upload photos and enter a property name")
+      return
+    }
+
     setIsGenerating(true)
     setProgress(0)
     setGenerationStep("analyzing")
+    setError(null)
 
-    const steps: GenerationStep[] = ["analyzing", "styling", "transitions", "finalizing", "complete"]
-    let currentStep = 0
-
-    const interval = setInterval(() => {
-      currentStep++
-      setProgress((currentStep / steps.length) * 100)
-
-      if (currentStep < steps.length) {
-        setGenerationStep(steps[currentStep])
-      } else {
-        clearInterval(interval)
-        setIsGenerating(false)
-        setVideoGenerated(true)
+    try {
+      // Create FormData for file upload
+      const formData = new FormData()
+      photos.forEach((photo) => {
+        formData.append("images", photo)
+      })
+      formData.append("name", propertyName)
+      
+      // Add optional prompt based on selected vibe and platform
+      let customPrompt = "create a virtual tour video of this property"
+      if (selectedVibe) {
+        switch (selectedVibe) {
+          case "luxury":
+            customPrompt = "create an elegant, slow-paced luxury property tour video"
+            break
+          case "fun":
+            customPrompt = "create an upbeat, energetic property tour video"
+            break
+          case "business":
+            customPrompt = "create a professional business-focused property tour video"
+            break
+          case "family":
+            customPrompt = "create a warm, family-friendly property tour video"
+            break
+        }
       }
-    }, 1500)
+      if (openingText) {
+        customPrompt += ` with opening text: "${openingText}"`
+      }
+      formData.append("prompt", customPrompt)
+
+      // Simulate progress steps
+      const steps: GenerationStep[] = ["analyzing", "styling", "transitions", "finalizing"]
+      let currentStep = 0
+      
+      const progressInterval = setInterval(() => {
+        if (currentStep < steps.length) {
+          setGenerationStep(steps[currentStep])
+          setProgress((currentStep / steps.length) * 80) // Leave 20% for final processing
+          currentStep++
+        }
+      }, 1000)
+
+      // Make API call to create character
+      const response = await fetch(`${API_BASE_URL}/characters/`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      // Get the created character details
+      const characterResponse = await fetch(`${API_BASE_URL}/characters/${result.character_id}`)
+      if (!characterResponse.ok) {
+        throw new Error("Failed to get character details")
+      }
+      
+      const character = await characterResponse.json()
+      
+      clearInterval(progressInterval)
+      setProgress(100)
+      setGenerationStep("complete")
+      setGeneratedCharacter(character)
+      setIsGenerating(false)
+      setVideoGenerated(true)
+
+    } catch (err) {
+      console.error("Error generating character:", err)
+      setError(err instanceof Error ? err.message : "Failed to generate video")
+      setIsGenerating(false)
+      setProgress(0)
+    }
   }
 
   const platforms = [
@@ -481,12 +565,17 @@ export default function DashboardPage() {
                 <>
                   <Button
                     size="lg"
-                    disabled={photos.length < 3}
+                    disabled={photos.length === 0 || !propertyName.trim()}
                     onClick={handleGenerate}
                     className="w-full bg-gradient-to-r from-accent to-orange-600 hover:from-accent/90 hover:to-orange-700 text-accent-foreground font-semibold text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Generate 8-Second Video
+                    Generate Property Video
                   </Button>
+                  {(photos.length === 0 || !propertyName.trim()) && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      {photos.length === 0 ? "Please upload at least one photo" : "Please enter a property name"}
+                    </p>
+                  )}
                   <div className="flex items-center gap-6 justify-center">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
@@ -509,16 +598,44 @@ export default function DashboardPage() {
           ) : (
             <Card className="bg-card border-border p-6">
               <div className="space-y-4">
-                <div className="aspect-video bg-black rounded-lg flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-purple-500/20" />
-                  <Play className="w-16 h-16 text-white/80" />
-                  <p className="absolute bottom-4 left-4 text-sm text-white/60">Your video is ready!</p>
-                </div>
+                {error && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                    Error: {error}
+                  </div>
+                )}
+                {generatedCharacter ? (
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
+                    <video
+                      controls
+                      className="w-full h-full object-cover"
+                      src={`${API_BASE_URL}/characters/${generatedCharacter.id}/video`}
+                      poster=""
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-white text-sm">
+                      {generatedCharacter.name}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-black rounded-lg flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-purple-500/20" />
+                    <Play className="w-16 h-16 text-white/80" />
+                    <p className="absolute bottom-4 left-4 text-sm text-white/60">Your video is ready!</p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-3">
-                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
+                  {generatedCharacter && (
+                    <a
+                      href={`${API_BASE_URL}/characters/${generatedCharacter.id}/video`}
+                      download={`${generatedCharacter.name}_video.mp4`}
+                    >
+                      <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </a>
+                  )}
                   <Button variant="outline" className="bg-card border-border hover:bg-muted">
                     <Share2 className="w-4 h-4 mr-2" />
                     Share to {selectedPlatform || "Platform"}
@@ -527,7 +644,9 @@ export default function DashboardPage() {
                     variant="ghost"
                     onClick={() => {
                       setVideoGenerated(false)
+                      setGeneratedCharacter(null)
                       setProgress(0)
+                      setError(null)
                     }}
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />

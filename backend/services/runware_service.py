@@ -114,25 +114,18 @@ class RunWareService:
                     "frame": "first"
                 })
             else:
-                # Multiple images - distribute across video frames
-                frame_positions = ["first", "middle", "last"]
+                # Multiple images - use first and last for 2-frame animation
+                frame_images.append({
+                    "inputImage": image_ids[0],
+                    "frame": "first"
+                })
                 
-                for i, image_id in enumerate(image_ids):
-                    if i == 0:
-                        frame_position = "first"
-                    elif i == len(image_ids) - 1:
-                        frame_position = "last"
-                    else:
-                        frame_position = "middle"
-                    
+                # If we have more than one image, use the last one as the final frame
+                if len(image_ids) > 1:
                     frame_images.append({
-                        "inputImage": image_id,
-                        "frame": frame_position
+                        "inputImage": image_ids[-1],
+                        "frame": "last"
                     })
-                    
-                    # Limit to maximum of 3 images for video generation
-                    if len(frame_images) >= 3:
-                        break
             
             logger.info(f"Frame images configuration: {len(frame_images)} frames")
             for i, frame in enumerate(frame_images):

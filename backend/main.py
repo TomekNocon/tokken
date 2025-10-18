@@ -22,9 +22,9 @@ from exceptions import (
     ValidationError
 )
 from logging_config import setup_logging, get_logger
-from models import Character, CreateCharacterResponse, ListCharactersResponse, CombineImagesResponse
-from services import CharacterService, ImageCombinationService
-from utils import generate_id
+from models import Character, CreateCharacterResponse, ListCharactersResponse, CombineImagesResponse, AirbnbScrapeResponse, AirbnbScrapeRequest
+from services import CharacterService, ImageCombinationService, AirbnbScraperService
+from utils import generate_id, get_current_timestamp
 
 # Set up logging
 setup_logging()
@@ -69,6 +69,7 @@ app.add_middleware(
 # Initialize services
 character_service = CharacterService()
 image_combination_service = ImageCombinationService()
+airbnb_scraper_service = AirbnbScraperService()
 
 
 # Exception handlers
@@ -316,6 +317,118 @@ async def get_combined_image(combination_id: str):
         
     except Exception as e:
         logger.error(f"Error getting combined image {combination_id}: {e}")
+        raise
+
+
+@app.post("/airbnb/scrape", response_model=AirbnbScrapeResponse, tags=["Airbnb Scraper"])
+async def scrape_airbnb_reviews(request: AirbnbScrapeRequest) -> AirbnbScrapeResponse:
+    """
+    Scrape and summarize Airbnb reviews for a given listing.
+    
+    - **url**: Airbnb listing URL (e.g., https://airbnb.com/rooms/12345)
+    - **max_pages**: Maximum pages to scrape (1-10, default: 3)
+    
+    Returns scraped reviews count and AI-generated summary of the accommodation.
+    """
+    try:
+        logger.info(f"Starting Airbnb scrape for URL: {request.url}")
+        
+        # Validate and normalize URL
+        normalized_url = airbnb_scraper_service.validate_airbnb_url(request.url)
+        
+        # Scrape reviews
+        reviews = await airbnb_scraper_service.scrape_reviews(
+            normalized_url, 
+            max_pages=request.max_pages or 3
+        )
+        
+        if not reviews:
+            return AirbnbScrapeResponse(
+                scrape_id=generate_id(),
+                listing_url=normalized_url,
+                total_reviews=0,
+                summary="No reviews found for this accommodation. This could be a new listing or the reviews may not be publicly accessible.",
+                status="completed",
+                message="Scraping completed but no reviews found"
+            )
+        
+        # Generate AI summary
+        summary = await airbnb_scraper_service.summarize_reviews(reviews)
+        
+        # Generate scrape ID and save results
+        scrape_id = generate_id()
+        
+        # Save scrape results to file (optional)
+        await save_scrape_results(scrape_id, normalized_url, reviews, summary)
+        
+        logger.info(f"Airbnb scrape completed: {scrape_id}, {len(reviews)} reviews")
+        
+        return AirbnbScrapeResponse(
+            scrape_id=scrape_id,
+            listing_url=normalized_url,
+            total_reviews=len(reviews),
+            summary=summary,
+            status="completed",
+            message=f"Successfully scraped and summarized {len(reviews)} reviews"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error scraping Airbnb reviews: {e}")
+        raise
+
+
+async def save_scrape_results(scrape_id: str, url: str, reviews: list, summary: str):
+    """Save scrape results to JSON file for future reference."""
+    try:
+        import json
+        
+        scrape_data = {
+            "id": scrape_id,
+            "listing_url": url,
+            "total_reviews": len(reviews),
+            "reviews": reviews,
+            "summary": summary,
+            "scraped_at": get_current_timestamp(),
+            "status": "completed"
+        }
+        
+        scrape_file = os.path.join(config.CHARACTERS_DIR, f"{scrape_id}_airbnb_scrape.json")
+        
+        with open(scrape_file, "w") as f:
+            json.dump(scrape_data, f, indent=2)
+        
+        logger.info(f"Scrape results saved: {scrape_file}")
+        
+    except Exception as e:
+        logger.error(f"Error saving scrape results: {e}")
+        # Don't raise - this is optional functionality
+
+
+@app.get("/airbnb/scrape/{scrape_id}", tags=["Airbnb Scraper"])
+async def get_scrape_results(scrape_id: str):
+    """
+    Get detailed scrape results including all reviews.
+    
+    - **scrape_id**: Unique scrape identifier from previous scrape
+    
+    Returns complete scrape data including individual reviews.
+    """
+    try:
+        logger.debug(f"Getting scrape results: {scrape_id}")
+        
+        scrape_file = os.path.join(config.CHARACTERS_DIR, f"{scrape_id}_airbnb_scrape.json")
+        
+        if not os.path.exists(scrape_file):
+            raise FileOperationError(f"Scrape results not found: {scrape_id}")
+        
+        import json
+        with open(scrape_file, "r") as f:
+            scrape_data = json.load(f)
+        
+        return scrape_data
+        
+    except Exception as e:
+        logger.error(f"Error getting scrape results {scrape_id}: {e}")
         raise
 
 

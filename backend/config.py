@@ -29,9 +29,9 @@ class Config:
     DUELS_DIR: str = os.path.join(DATA_DIR, "duels")
     
     # Video generation settings
-    DEFAULT_VIDEO_WIDTH: int = 1280
-    DEFAULT_VIDEO_HEIGHT: int = 720
-    DEFAULT_VIDEO_DURATION: float = 4.0
+    DEFAULT_VIDEO_WIDTH: int = 720
+    DEFAULT_VIDEO_HEIGHT: int = 1280
+    DEFAULT_VIDEO_DURATION: float = 8.0
     DEFAULT_VIDEO_MODEL: str = "google:3@3"
     
     # Polling settings

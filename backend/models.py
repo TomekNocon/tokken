@@ -98,3 +98,41 @@ class ImageCombination(BaseModel):
     prompt: Optional[str] = Field(None, description="Combination prompt")
     created_at: str = Field(..., description="Creation timestamp")
     status: str = Field(..., description="Combination status")
+
+
+class AirbnbScrapeRequest(BaseModel):
+    """Request model for scraping Airbnb reviews."""
+    
+    url: str = Field(..., description="Airbnb listing URL")
+    max_pages: Optional[int] = Field(3, ge=1, le=10, description="Maximum pages to scrape (1-10)")
+
+
+class AirbnbScrapeResponse(BaseModel):
+    """Response model for Airbnb review scraping."""
+    
+    scrape_id: str = Field(..., description="Unique scrape identifier")
+    listing_url: str = Field(..., description="Processed listing URL")
+    total_reviews: int = Field(..., description="Total number of reviews found")
+    summary: str = Field(..., description="AI-generated summary of reviews")
+    status: str = Field(..., description="Scraping status")
+    message: str = Field(..., description="Status message")
+
+
+class AirbnbReview(BaseModel):
+    """Individual Airbnb review model."""
+    
+    text: str = Field(..., description="Review text content")
+    reviewer: str = Field(..., description="Reviewer name")
+    date: str = Field(..., description="Review date")
+
+
+class AirbnbScrapeResult(BaseModel):
+    """Complete Airbnb scrape result model."""
+    
+    id: str = Field(..., description="Unique scrape identifier")
+    listing_url: str = Field(..., description="Airbnb listing URL")
+    reviews: List[AirbnbReview] = Field(..., description="List of scraped reviews")
+    summary: str = Field(..., description="Summary of reviews")
+    total_reviews: int = Field(..., description="Total number of reviews")
+    scraped_at: str = Field(..., description="Scraping timestamp")
+    status: str = Field(..., description="Scraping status")
