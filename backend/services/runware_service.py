@@ -99,15 +99,44 @@ class RunWareService:
             
             logger.info(f"Starting video generation for character: {character_name}")
             logger.info(f"Video dimensions: {width}x{height}, Duration: {duration}s")
+            logger.info(f"Using {len(image_ids)} images for video generation")
             
             if not image_ids:
                 raise RunWareAPIError("No images provided for video generation")
             
-            # Prepare frame images
-            frame_images = [{
-                "inputImage": image_ids[0],
-                "frame": "first"
-            }]
+            # Prepare frame images - use all uploaded images
+            frame_images = []
+            
+            if len(image_ids) == 1:
+                # Single image - use as first frame
+                frame_images.append({
+                    "inputImage": image_ids[0],
+                    "frame": "first"
+                })
+            else:
+                # Multiple images - distribute across video frames
+                frame_positions = ["first", "middle", "last"]
+                
+                for i, image_id in enumerate(image_ids):
+                    if i == 0:
+                        frame_position = "first"
+                    elif i == len(image_ids) - 1:
+                        frame_position = "last"
+                    else:
+                        frame_position = "middle"
+                    
+                    frame_images.append({
+                        "inputImage": image_id,
+                        "frame": frame_position
+                    })
+                    
+                    # Limit to maximum of 3 images for video generation
+                    if len(frame_images) >= 3:
+                        break
+            
+            logger.info(f"Frame images configuration: {len(frame_images)} frames")
+            for i, frame in enumerate(frame_images):
+                logger.info(f"Frame {i+1}: {frame['frame']} position")
             
             # Prepare video generation payload
             task_uuid = str(uuid.uuid4())
