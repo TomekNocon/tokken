@@ -71,6 +71,10 @@ export default function DashboardPage() {
   const [videoGenerated, setVideoGenerated] = useState(false)
   const [generatedCharacter, setGeneratedCharacter] = useState<Character | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showAddYourself, setShowAddYourself] = useState(false)
+  const [userPhoto, setUserPhoto] = useState<File | null>(null)
+  const [isCombiningImages, setIsCombiningImages] = useState(false)
+  const [combinedImageUrl, setCombinedImageUrl] = useState<string | null>(null)
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -109,6 +113,49 @@ export default function DashboardPage() {
     setDraggedIndex(null)
   }
 
+  const handleUserPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUserPhoto(e.target.files[0])
+    }
+  }
+
+  const handleCombineImages = async () => {
+    if (!userPhoto || photos.length === 0) {
+      setError("Please upload your photo and at least one property image")
+      return
+    }
+
+    setIsCombiningImages(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append("background_image", photos[0]) // Use first photo as background
+      formData.append("person_image", userPhoto)
+      formData.append("prompt", "Person naturally placed in this room environment, realistic lighting, seamless integration")
+
+      const response = await fetch(`${API_BASE_URL}/combine-images/`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      setCombinedImageUrl(result.combined_image_url)
+      setShowAddYourself(false)
+      
+    } catch (err) {
+      console.error("Error combining images:", err)
+      setError(err instanceof Error ? err.message : "Failed to combine images")
+    } finally {
+      setIsCombiningImages(false)
+    }
+  }
+
   const handleGenerate = async () => {
     if (photos.length === 0 || !propertyName) {
       setError("Please upload photos and enter a property name")
@@ -123,9 +170,25 @@ export default function DashboardPage() {
     try {
       // Create FormData for file upload
       const formData = new FormData()
+      
+      // Add original photos
       photos.forEach((photo) => {
         formData.append("images", photo)
       })
+      
+      // If there's a combined image, fetch it and add it as the third image
+      if (combinedImageUrl) {
+        try {
+          const combinedResponse = await fetch(`${API_BASE_URL}${combinedImageUrl}`)
+          const combinedBlob = await combinedResponse.blob()
+          const combinedFile = new File([combinedBlob], "combined_image.png", { type: "image/png" })
+          formData.append("images", combinedFile)
+        } catch (err) {
+          console.error("Error adding combined image:", err)
+          // Continue without the combined image
+        }
+      }
+      
       formData.append("name", propertyName)
       
       // Add optional prompt based on selected vibe and platform
@@ -340,6 +403,25 @@ export default function DashboardPage() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Add Yourself Button */}
+              {photos.length > 0 && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAddYourself(true)}
+                    className="w-full border-dashed border-accent/50 text-accent hover:bg-accent/10"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Add Yourself to the Scene
+                  </Button>
+                  {combinedImageUrl && (
+                    <div className="mt-2 p-2 bg-accent/10 rounded-lg text-sm text-accent">
+                      ✓ You've been added to the first image
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
@@ -657,6 +739,70 @@ export default function DashboardPage() {
             </Card>
           )}
         </div>
+
+        {/* Add Yourself Modal */}
+        {showAddYourself && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="bg-card border-border p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Add Yourself to the Scene</h3>
+                <button
+                  onClick={() => setShowAddYourself(false)}
+                  className="p-1 rounded-full hover:bg-muted"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Upload a photo of yourself to be placed in the first property image. This will create a personalized version for your video.
+                </p>
+                
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-2">Upload your photo</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUserPhotoSelect}
+                    className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-accent file:text-accent-foreground hover:file:bg-accent/90"
+                  />
+                </div>
+
+                {userPhoto && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div className="w-12 h-12 bg-muted rounded overflow-hidden">
+                      <img
+                        src={URL.createObjectURL(userPhoto)}
+                        alt="Your photo"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="text-sm flex-1">{userPhoto.name}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAddYourself(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCombineImages}
+                    disabled={!userPhoto || isCombiningImages}
+                    className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+                  >
+                    {isCombiningImages ? "Combining..." : "Add to Scene"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

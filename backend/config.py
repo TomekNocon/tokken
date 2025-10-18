@@ -29,8 +29,8 @@ class Config:
     DUELS_DIR: str = os.path.join(DATA_DIR, "duels")
     
     # Video generation settings
-    DEFAULT_VIDEO_WIDTH: int = 720
-    DEFAULT_VIDEO_HEIGHT: int = 1280
+    DEFAULT_VIDEO_WIDTH: int = 1280
+    DEFAULT_VIDEO_HEIGHT: int = 720
     DEFAULT_VIDEO_DURATION: float = 8.0
     DEFAULT_VIDEO_MODEL: str = "google:3@3"
     
@@ -43,7 +43,7 @@ class Config:
     DEFAULT_CHARACTER_HEALTH: int = 1000
     
     # Default video generation prompt
-    DEFAULT_VIDEO_PROMPT: str = "create a virtual tour video of this living room as if real estate agent walked around and recorded it"
+    DEFAULT_VIDEO_PROMPT: str = "Create a realistic, cinematic virtual tour video of a modern living room. The camera should move smoothly as if held by a real estate agent walking through the space — entering from the hallway, slowly panning across the furniture, artwork, and windows, and highlighting design details like lighting, flooring, and layout. The movement should feel natural and handheld but stable, like a professional gimbal recording. Include soft natural daylight coming through the windows, gentle camera focus transitions, and realistic shadows and reflections. Make the environment feel warm, inviting, and professionally staged for a property listing."
     
     @classmethod
     def validate(cls) -> None:
