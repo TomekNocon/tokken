@@ -71,3 +71,30 @@ class RunWareTask(BaseModel):
     progress: Optional[str] = Field(None, description="Task progress")
     video_url: Optional[str] = Field(None, description="Generated video URL")
     error: Optional[str] = Field(None, description="Error message if any")
+
+
+class CombineImagesRequest(BaseModel):
+    """Request model for combining images."""
+    
+    prompt: Optional[str] = Field(None, max_length=500, description="Custom prompt for image combination")
+
+
+class CombineImagesResponse(BaseModel):
+    """Response model for image combination."""
+    
+    combination_id: str = Field(..., description="Generated combination ID")
+    combined_image_url: str = Field(..., description="URL to access the combined image")
+    status: str = Field(..., description="Combination status")
+    message: str = Field(..., description="Status message")
+
+
+class ImageCombination(BaseModel):
+    """Image combination data model."""
+    
+    id: str = Field(..., description="Unique combination identifier")
+    background_image: str = Field(..., description="Path to background image")
+    person_image: str = Field(..., description="Path to person image")
+    combined_image: str = Field(..., description="Path to combined image")
+    prompt: Optional[str] = Field(None, description="Combination prompt")
+    created_at: str = Field(..., description="Creation timestamp")
+    status: str = Field(..., description="Combination status")
