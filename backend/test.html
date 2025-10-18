@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test nano-bannan Character Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 20px 0; }
+        .upload-area:hover { border-color: #007cba; }
+        .result { margin-top: 20px; padding: 20px; background: #f5f5f5; border-radius: 8px; }
+        .image-container { display: flex; gap: 20px; margin-top: 20px; }
+        .image-container div { flex: 1; text-align: center; }
+        img { max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .loading { display: none; color: #007cba; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Test nano-bannan Character Generator</h1>
+    
+    <form id="characterForm" enctype="multipart/form-data">
+        <div>
+            <label for="sketch">Upload your sketch:</label>
+            <div class="upload-area" onclick="document.getElementById('sketch').click()">
+                <input type="file" id="sketch" name="sketch" accept="image/*" style="display: none;" required>
+                <p>Click here to select your sketch file</p>
+                <p id="fileName"></p>
+            </div>
+        </div>
+        
+        <div>
+            <label for="name">Character name:</label><br>
+            <input type="text" id="name" name="name" placeholder="e.g., Fire Dragon Warrior" required style="width: 300px; padding: 8px; margin: 10px 0;">
+        </div>
+        
+        <button type="submit">🚀 Generate Character with nano-bannan</button>
+        <div class="loading" id="loading">⏳ Generating character... This may take 10-30 seconds...</div>
+    </form>
+    
+    <div class="result" id="result" style="display: none;">
+        <h3>✅ Character Generated Successfully!</h3>
+        <p><strong>Character ID:</strong> <span id="charId"></span></p>
+        <p><strong>Name:</strong> <span id="charName"></span></p>
+        
+        <div class="image-container">
+            <div>
+                <h4>Original Sketch</h4>
+                <img id="sketchImg" alt="Original sketch">
+            </div>
+            <div>
+                <h4>Generated Character (nano-bannan)</h4>
+                <img id="generatedImg" alt="Generated character">
+            </div>
+        </div>
+    </div>
+    
+    <div id="error" style="display: none; color: red; margin-top: 20px;"></div>
+
+    <script>
+        // File upload UI
+        document.getElementById('sketch').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('fileName').textContent = fileName ? `Selected: ${fileName}` : '';
+        });
+
+        // Form submission
+        document.getElementById('characterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const sketchFile = document.getElementById('sketch').files[0];
+            const characterName = document.getElementById('name').value;
+            
+            if (!sketchFile) {
+                alert('Please select a sketch file');
+                return;
+            }
+            
+            formData.append('sketch', sketchFile);
+            formData.append('name', characterName);
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                const response = await fetch('http://localhost:8000/characters/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Show success
+                    document.getElementById('charId').textContent = result.character_id;
+                    document.getElementById('charName').textContent = characterName;
+                    document.getElementById('sketchImg').src = `http://localhost:8000/characters/${result.character_id}/image/sketch`;
+                    document.getElementById('generatedImg').src = `http://localhost:8000/characters/${result.character_id}/image/generated`;
+                    document.getElementById('result').style.display = 'block';
+                } else {
+                    // Show error
+                    document.getElementById('error').textContent = `Error: ${result.detail || 'Unknown error'}`;
+                    document.getElementById('error').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = `Network error: ${error.message}`;
+                document.getElementById('error').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
